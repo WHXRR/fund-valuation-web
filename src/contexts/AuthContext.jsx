@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import FullPageLoading from '../components/FullPageLoading';
 
 const AuthContext = createContext({});
 
@@ -35,7 +36,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <FullPageLoading /> : children}
     </AuthContext.Provider>
   );
 };

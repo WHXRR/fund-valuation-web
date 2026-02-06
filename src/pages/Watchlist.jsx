@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import clsx from 'clsx';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Watchlist() {
   const { watchlist, fundData, fetchFundData, isLoading, addToWatchlist, removeFromWatchlist } = useFundStore();
@@ -35,9 +36,8 @@ export default function Watchlist() {
             size="icon"
             onClick={fetchFundData} 
             disabled={isLoading}
-            className={clsx(isLoading && "animate-spin")}
           >
-            <RefreshCw className="h-5 w-5" />
+            <RefreshCw className={clsx("h-5 w-5", isLoading && "animate-spin")} />
           </Button>
           <Button 
             variant="outline"
@@ -51,12 +51,29 @@ export default function Watchlist() {
 
       <div className="space-y-3">
         {watchlist.length === 0 ? (
-          <Card className="border-dashed shadow-none">
-            <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-              <p>暂无自选</p>
-              <Button variant="link" onClick={() => setIsModalOpen(true)}>点击添加</Button>
-            </CardContent>
-          </Card>
+          isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="border rounded-xl p-4 flex justify-between items-center">
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <div className="space-y-2 flex flex-col items-end">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-3 w-10" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Card className="border-dashed shadow-none">
+              <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+                <p>暂无自选</p>
+                <Button variant="link" onClick={() => setIsModalOpen(true)}>点击添加</Button>
+              </CardContent>
+            </Card>
+          )
         ) : (
           watchlist.map((item) => {
             const data = fundData[item.code] || {};

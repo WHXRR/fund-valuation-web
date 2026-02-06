@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, RefreshCw, ArrowUpRight, ArrowDownRight, Pencil, ArrowUpDown } from 'lucide-react';
+import { Plus, RefreshCw, ArrowUpRight, ArrowDownRight, Pencil, ArrowUpDown, Loader2 } from 'lucide-react';
 import useFundStore from '../store/useFundStore';
 import AddFundModal from '../components/AddFundModal';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,8 +14,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import clsx from 'clsx';
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function Home() {
-  const { portfolio, fundData, fetchFundData, isLoading, addToPortfolio, updatePortfolioItem, deleteFundTransactions } = useFundStore();
+  const { portfolio, fundData, fetchFundData, isLoading, addToPortfolio, removeFromPortfolio, updatePortfolioItem, deleteFundTransactions } = useFundStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
   const [sortBy, setSortBy] = useState('default'); // 'default', 'change', 'profit'
@@ -139,9 +141,8 @@ export default function Home() {
           size="icon" 
           onClick={fetchFundData} 
           disabled={isLoading}
-          className={clsx(isLoading && "animate-spin")}
         >
-          <RefreshCw className="h-5 w-5" />
+          <RefreshCw className={clsx("h-5 w-5", isLoading && "animate-spin")} />
         </Button>
       </header>
 
@@ -210,12 +211,39 @@ export default function Home() {
         </div>
 
         {portfolio.length === 0 ? (
-          <Card className="border-dashed shadow-none">
-            <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-              <p>暂无持仓</p>
-              <Button variant="link" onClick={() => setIsModalOpen(true)}>点击添加基金</Button>
-            </CardContent>
-          </Card>
+          isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="border rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Skeleton className="h-3 w-8" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                    <div className="space-y-1">
+                      <Skeleton className="h-3 w-8" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                    <div className="space-y-1">
+                      <Skeleton className="h-3 w-8" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Card className="border-dashed shadow-none">
+              <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+                <p>暂无持仓</p>
+                <Button variant="link" onClick={() => setIsModalOpen(true)}>点击添加基金</Button>
+              </CardContent>
+            </Card>
+          )
         ) : (
           <div className="grid gap-3">
             {sortedPortfolio.map((item) => {

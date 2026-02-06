@@ -9,10 +9,12 @@ import Register from './pages/Register';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import useFundStore from './store/useFundStore';
 
+import FullPageLoading from './components/FullPageLoading';
+
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <FullPageLoading />;
   if (!user) return <Navigate to="/login" />;
   
   return children;
