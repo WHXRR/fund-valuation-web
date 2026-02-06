@@ -26,7 +26,7 @@ export default function Layout() {
              <DropdownMenu>
                <DropdownMenuTrigger asChild>
                  <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full">
-                   <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
+                   <div className="flex h-full w-full items-center justify-center rounded-full">
                      <User className="h-4 w-4" />
                    </div>
                  </Button>
@@ -48,7 +48,7 @@ export default function Layout() {
                </DropdownMenuContent>
              </DropdownMenu>
            ) : (
-             <NavLink to="/login" className="text-sm font-medium text-blue-600">
+             <NavLink to="/login" className="text-sm font-medium text-red-600">
                登录
              </NavLink>
            )}
@@ -64,7 +64,7 @@ export default function Layout() {
           to="/" 
           className={({ isActive }) => clsx(
             "flex flex-col items-center justify-center w-full h-full",
-            isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
+            isActive ? "text-red-600" : "text-gray-500 hover:text-gray-700"
           )}
         >
           <Wallet size={24} />
@@ -75,7 +75,7 @@ export default function Layout() {
           to="/watchlist" 
           className={({ isActive }) => clsx(
             "flex flex-col items-center justify-center w-full h-full",
-            isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-700"
+            isActive ? "text-red-600" : "text-gray-500 hover:text-gray-700"
           )}
         >
           <List size={24} />

@@ -5,10 +5,69 @@ import { getFundChartData, getFundHistory } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, History } from 'lucide-react';
+import { ArrowLeft, History, Loader2 } from 'lucide-react';
 import useFundStore from '../store/useFundStore';
 import FundActionModal from '../components/FundActionModal';
 import TransactionHistoryModal from '../components/TransactionHistoryModal';
+
+import { Skeleton } from "@/components/ui/skeleton";
+
+const FundDetailSkeleton = () => {
+  return (
+    <div className="container mx-auto p-4 max-w-md pb-24 relative min-h-screen">
+      <div className="flex items-center mb-4">
+        <Skeleton className="h-10 w-10 rounded-full mr-2" />
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {/* Chart Card Skeleton */}
+        <div className="rounded-xl border bg-card text-card-foreground shadow">
+          <div className="p-6 pb-2">
+            <div className="flex justify-between items-center mb-4">
+              <Skeleton className="h-6 w-20" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <Skeleton className="h-64 w-full rounded-md" />
+            <div className="flex justify-between mt-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-8 w-12" />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* History List Skeleton */}
+        <div className="rounded-xl border bg-card text-card-foreground shadow">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <Skeleton className="h-6 w-20" />
+              <Skeleton className="h-4 w-12" />
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-4 w-full" />
+                ))}
+              </div>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="grid grid-cols-4 gap-2 py-2">
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-5 w-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const FundDetail = () => {
   const { code } = useParams();
@@ -21,6 +80,17 @@ const FundDetail = () => {
   const [range, setRange] = useState('3M'); // 1M, 3M, 6M, 1Y, ALL
   const [historyPage, setHistoryPage] = useState(1);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [chartLoading, setChartLoading] = useState(false);
+
+  const handleRangeChange = (r) => {
+    if (range === r) return;
+    setChartLoading(true);
+    setRange(r);
+    // Simulate short loading effect for better UX
+    setTimeout(() => {
+      setChartLoading(false);
+    }, 300);
+  };
   
   // Transaction History Modal
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -241,7 +311,7 @@ const FundDetail = () => {
     };
 
   if (loading) {
-    return <div className="p-4 text-center">加载中...</div>;
+    return <FundDetailSkeleton />;
   }
 
   return (
@@ -264,7 +334,12 @@ const FundDetail = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="h-64 w-full">
+          <div className="h-64 w-full relative">
+            {chartLoading && (
+              <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-sm flex items-center justify-center">
+                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            )}
             <ReactECharts 
               option={getOption()} 
               style={{ height: '100%', width: '100%' }} 
@@ -278,7 +353,7 @@ const FundDetail = () => {
                 key={r} 
                 variant={range === r ? "default" : "ghost"} 
                 size="sm"
-                onClick={() => setRange(r)}
+                onClick={() => handleRangeChange(r)}
                 className="text-xs h-8 px-2"
               >
                 {r === 'ALL' ? '全部' : `近${r}`}

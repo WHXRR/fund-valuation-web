@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Loader2 } from 'lucide-react';
 import { searchFund } from '../services/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 export default function AddFundModal({ isOpen, onClose, onAdd, mode = 'portfolio', initialFund = null }) {
   const [keyword, setKeyword] = useState('');
   const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [selectedFund, setSelectedFund] = useState(null);
   
   // Changed: cost -> profit
@@ -45,9 +46,15 @@ export default function AddFundModal({ isOpen, onClose, onAdd, mode = 'portfolio
   }, [isOpen, initialFund]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       if (keyword.length >= 2) {
-        searchFund(keyword).then(setResults);
+        setLoading(true);
+        try {
+          const res = await searchFund(keyword);
+          setResults(res);
+        } finally {
+          setLoading(false);
+        }
       } else {
         setResults([]);
       }
@@ -114,27 +121,36 @@ export default function AddFundModal({ isOpen, onClose, onAdd, mode = 'portfolio
             </div>
             
             <div className="h-[300px] overflow-y-auto -mx-2 px-2 space-y-1">
-              {results.length === 0 && keyword.length >= 2 && (
-                <p className="text-center text-muted-foreground py-8 text-sm">未找到相关基金</p>
-              )}
-              {results.map((fund) => (
-                <div
-                  key={fund.code}
-                  onClick={() => handleSelect(fund)}
-                  className="flex justify-between items-center p-3 hover:bg-accent rounded-md cursor-pointer transition-colors group"
-                >
-                  <div className="flex-1 min-w-0 mr-4">
-                    <div className="font-medium text-sm line-clamp-1">{fund.name}</div>
-                    <div className="text-xs text-muted-foreground flex items-center space-x-2 mt-0.5">
-                      <span className="font-mono">{fund.code}</span>
-                      <span className="bg-muted px-1.5 rounded-[2px] scale-90 origin-left">{fund.type}</span>
-                    </div>
-                  </div>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Plus className="h-4 w-4 text-primary" />
-                  </Button>
+              {loading ? (
+                <div className="flex justify-center items-center h-full text-muted-foreground">
+                   <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                   <span>搜索中...</span>
                 </div>
-              ))}
+              ) : (
+                <>
+                  {results.length === 0 && keyword.length >= 2 && (
+                    <p className="text-center text-muted-foreground py-8 text-sm">未找到相关基金</p>
+                  )}
+                  {results.map((fund) => (
+                    <div
+                      key={fund.code}
+                      onClick={() => handleSelect(fund)}
+                      className="flex justify-between items-center p-3 hover:bg-accent rounded-md cursor-pointer transition-colors group"
+                    >
+                      <div className="flex-1 min-w-0 mr-4">
+                        <div className="font-medium text-sm line-clamp-1">{fund.name}</div>
+                        <div className="text-xs text-muted-foreground flex items-center space-x-2 mt-0.5">
+                          <span className="font-mono">{fund.code}</span>
+                          <span className="bg-muted px-1.5 rounded-[2px] scale-90 origin-left">{fund.type}</span>
+                        </div>
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Plus className="h-4 w-4 text-primary" />
+                      </Button>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </div>
         ) : (
