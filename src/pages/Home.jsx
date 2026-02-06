@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, RefreshCw, ArrowUpRight, ArrowDownRight, Pencil, ArrowUpDown, Loader2 } from 'lucide-react';
+import { Plus, RefreshCw, ArrowUpRight, ArrowDownRight, Pencil, ArrowUpDown, Loader2, CheckCircle2 } from 'lucide-react';
 import useFundStore from '../store/useFundStore';
 import AddFundModal from '../components/AddFundModal';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,7 +17,7 @@ import clsx from 'clsx';
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Home() {
-  const { portfolio, fundData, fetchFundData, isLoading, addToPortfolio, removeFromPortfolio, updatePortfolioItem, deleteFundTransactions } = useFundStore();
+  const { portfolio, fundData, fetchFundData, isLoading, fundLoading, addToPortfolio, updatePortfolioItem, deleteFundTransactions } = useFundStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
   const [sortBy, setSortBy] = useState('default'); // 'default', 'change', 'profit'
@@ -32,10 +32,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchFundData();
-    const timer = setInterval(fetchFundData, 30000); // Auto refresh every 30s
+    fetchFundData('portfolio');
+    const timer = setInterval(() => fetchFundData('portfolio'), 30000); // Auto refresh every 30s
     return () => clearInterval(timer);
-  }, [fetchFundData]);
+  }, [fetchFundData, portfolio]);
 
   const summary = useMemo(() => {
     let totalAmount = 0;
@@ -132,14 +132,22 @@ export default function Home() {
     setEditingFund(item);
   };
 
+  const isFundUpdated = (code) => {
+    const data = fundData[code];
+    if (!data?.navDate || !data?.gztime) return false;
+    const navDate = data.navDate;
+    const gzDate = data.gztime.split(' ')[0];
+    return navDate === gzDate;
+  };
+
   return (
-    <div className="p-4 space-y-6 max-w-md mx-auto">
+    <div className="space-y-6 pb-20 md:pb-0">
       <header className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">我的持仓</h1>
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={fetchFundData} 
+          onClick={() => fetchFundData('portfolio')} 
           disabled={isLoading}
         >
           <RefreshCw className={clsx("h-5 w-5", isLoading && "animate-spin")} />
@@ -147,33 +155,39 @@ export default function Home() {
       </header>
 
       {/* Summary Card */}
-      <Card className="bg-gradient-to-br from-primary/90 to-primary text-primary-foreground border-none shadow-lg">
-        <CardContent className="pt-6">
-          <div className="text-primary-foreground/80 text-sm mb-1">总资产 (元)</div>
-          <div className="text-4xl font-bold mb-6 tracking-tight">{summary.totalAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-primary-foreground/80 text-xs mb-1">当日收益</div>
-              <div className="text-lg font-semibold flex items-center">
-                {summary.dayProfit > 0 ? '+' : ''}{summary.dayProfit.toFixed(2)}
-                <span className="text-xs ml-1 opacity-80">
-                  ({summary.dayProfitRate > 0 ? '+' : ''}{summary.dayProfitRate.toFixed(2)}%)
-                </span>
+      <div className="grid gap-4 md:grid-cols-1">
+        <Card className="bg-gradient-to-br from-primary/90 to-primary text-primary-foreground border-none shadow-lg">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6">
+              <div>
+                <div className="text-primary-foreground/80 text-sm mb-1">总资产 (元)</div>
+                <div className="text-4xl font-bold tracking-tight">¥{summary.totalAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-8 md:gap-12">
+                <div>
+                  <div className="text-primary-foreground/80 text-xs mb-1">当日收益</div>
+                  <div className="text-lg font-semibold flex items-center">
+                    {summary.dayProfit > 0 ? '+' : summary.dayProfit < 0 ? '-' : ''}¥{Math.abs(summary.dayProfit).toFixed(2)}
+                    <span className="text-xs ml-1 opacity-80">
+                      ({summary.dayProfitRate > 0 ? '+' : ''}{summary.dayProfitRate.toFixed(2)}%)
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-primary-foreground/80 text-xs mb-1">总收益</div>
+                  <div className="text-lg font-semibold flex items-center">
+                    {summary.totalProfit > 0 ? '+' : summary.totalProfit < 0 ? '-' : ''}¥{Math.abs(summary.totalProfit).toFixed(2)}
+                    <span className="text-xs ml-1 opacity-80">
+                      ({summary.totalProfitRate > 0 ? '+' : ''}{summary.totalProfitRate.toFixed(2)}%)
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div>
-              <div className="text-primary-foreground/80 text-xs mb-1">总收益</div>
-              <div className="text-lg font-semibold flex items-center">
-                {summary.totalProfit > 0 ? '+' : ''}{summary.totalProfit.toFixed(2)}
-                <span className="text-xs ml-1 opacity-80">
-                  ({summary.totalProfitRate > 0 ? '+' : ''}{summary.totalProfitRate.toFixed(2)}%)
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Fund List */}
       <div className="space-y-4">
@@ -212,7 +226,7 @@ export default function Home() {
 
         {portfolio.length === 0 ? (
           isLoading ? (
-            <div className="space-y-3">
+            <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {[1, 2, 3].map(i => (
                 <div key={i} className="border rounded-xl p-4 space-y-3">
                   <div className="flex justify-between items-center">
@@ -245,14 +259,12 @@ export default function Home() {
             </Card>
           )
         ) : (
-          <div className="grid gap-3">
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {sortedPortfolio.map((item) => {
               const data = fundData[item.code] || {};
               const gszzl = parseFloat(data.gszzl || 0);
               
               // Calculate Current Valuation
-              // If we have shares, use shares * currentPrice
-              // Otherwise fallback to legacy amount-based calculation
               let currentValuation = 0;
               const currentPrice = parseFloat(data.gsz) || parseFloat(data.dwjz) || 1;
               
@@ -271,16 +283,29 @@ export default function Home() {
               return (
                 <Card 
                   key={item.id} 
-                  className="overflow-hidden transition-all hover:shadow-md cursor-pointer active:scale-95"
-                  onClick={() => navigate(`/fund/${item.code}`)}
+                  className="relative overflow-hidden transition-all hover:shadow-md cursor-pointer active:scale-95 md:active:scale-100 md:hover:-translate-y-1"
+                  onClick={() => !fundLoading?.[item.code] && !isLoading && navigate(`/fund/${item.code}`)}
                 >
+                  {(fundLoading?.[item.code] || (isLoading && !fundLoading)) && (
+                    <div className="absolute inset-0 bg-white/60 dark:bg-black/60 z-20 flex items-center justify-center backdrop-blur-[1px] transition-opacity duration-200">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  )}
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-3">
-                      <div className="space-y-1">
-                        <div className="font-semibold text-base line-clamp-1 mr-2">{item.name}</div>
-                        <div className="text-xs text-muted-foreground font-mono">{item.code}</div>
+                      <div className="space-y-1 overflow-hidden mr-2">
+                        <div className="font-semibold text-base truncate" title={item.name}>{item.name}</div>
+                        <div className="text-xs text-muted-foreground font-mono flex items-center gap-2">
+                          {item.code}
+                          {isFundUpdated(item.code) && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-200">
+                              <CheckCircle2 className="h-3 w-3" />
+                              已更新
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <Badge variant={getTrendBadge(gszzl)} className="text-sm px-2 py-0.5 h-6">
+                      <Badge variant={getTrendBadge(gszzl)} className="text-sm px-2 py-0.5 h-6 shrink-0">
                         {gszzl > 0 ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> : gszzl < 0 ? <ArrowDownRight className="h-3 w-3 mr-0.5" /> : null}
                         {gszzl > 0 ? '+' : ''}{gszzl}%
                       </Badge>
@@ -289,23 +314,21 @@ export default function Home() {
                     <div className="grid grid-cols-3 gap-2 text-sm mb-2">
                       <div>
                         <div className="text-muted-foreground text-xs mb-0.5">持有</div>
-                        <div className="font-medium font-mono">{currentValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="font-medium font-mono">¥{currentValuation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                       </div>
                       <div>
                         <div className="text-muted-foreground text-xs mb-0.5">当日</div>
                         <div className={clsx("font-medium font-mono flex items-center gap-1", getTrendColor(dayProfit))}>
-                          <span>{dayProfit > 0 ? '+' : ''}{dayProfit.toFixed(2)}</span>
-                          <span className="text-[10px] opacity-80">
-                            ({gszzl > 0 ? '+' : ''}{gszzl}%)
-                          </span>
+                          <span>{dayProfit > 0 ? '+' : dayProfit < 0 ? '-' : ''}¥{Math.abs(dayProfit).toFixed(2)}</span>
+                          {/* Hidden percentage on small cards if too crowded, but keeping for now */}
                         </div>
                       </div>
                       <div>
                         <div className="text-muted-foreground text-xs mb-0.5">持仓</div>
-                        <div className={clsx("font-medium font-mono flex items-center gap-1", getTrendColor(totalProfit))}>
-                          <span>{totalProfit > 0 ? '+' : ''}{totalProfit.toFixed(2)}</span>
+                        <div className={clsx("font-medium font-mono flex flex-col items-start leading-none gap-1", getTrendColor(totalProfit))}>
+                          <span>{totalProfit > 0 ? '+' : totalProfit < 0 ? '-' : ''}¥{Math.abs(totalProfit).toFixed(2)}</span>
                           <span className="text-[10px] opacity-80">
-                            ({totalProfitRate > 0 ? '+' : ''}{totalProfitRate.toFixed(2)}%)
+                            {totalProfitRate > 0 ? '+' : ''}{totalProfitRate.toFixed(2)}%
                           </span>
                         </div>
                       </div>

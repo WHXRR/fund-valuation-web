@@ -26,7 +26,7 @@ function AppRoutes() {
 
   useEffect(() => {
     // Only refresh if user is logged in
-    if (user) {
+    if (user?.id) {
       refreshPortfolio();
 
       const handleVisibilityChange = () => {
@@ -40,7 +40,7 @@ function AppRoutes() {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       };
     }
-  }, [refreshPortfolio, user]);
+  }, [refreshPortfolio, user?.id]);
 
   return (
     <Routes>

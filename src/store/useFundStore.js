@@ -59,6 +59,7 @@ const useFundStore = create((set, get) => ({
   transactions: [],
   watchlist: [],
   fundData: {},
+  fundLoading: {}, // Individual loading state per fund code
   isLoading: false,
 
   refreshPortfolio: async () => {
@@ -77,8 +78,6 @@ const useFundStore = create((set, get) => ({
         portfolio,
         isLoading: false
       });
-      
-      get().fetchFundData();
     } catch (error) {
       console.error('Failed to refresh portfolio:', error);
       set({ isLoading: false });
@@ -171,22 +170,82 @@ const useFundStore = create((set, get) => ({
     get().deleteFundTransactions(id);
   },
 
-  fetchFundData: async () => {
+  fetchFundData: async (type = 'all') => {
     const state = get();
-    const codes = new Set([
-      ...state.portfolio.map(f => f.code),
-      ...state.watchlist.map(f => f.code)
-    ]);
+    const codes = new Set();
+    
+    if (type === 'all' || type === 'portfolio') {
+      state.portfolio.forEach(f => codes.add(f.code));
+    }
+    
+    if (type === 'all' || type === 'watchlist') {
+      state.watchlist.forEach(f => codes.add(f.code));
+    }
     
     if (codes.size === 0) return;
 
+    // Set initial loading state for all targeted funds
+    const loadingState = {};
+    codes.forEach(code => {
+      loadingState[code] = true;
+    });
+    
+    set((state) => ({
+      isLoading: true,
+      fundLoading: { ...state.fundLoading, ...loadingState }
+    }));
+
+    // Fetch individual fund data concurrently and update state progressively
+    const promises = Array.from(codes).map(async (code) => {
+      try {
+        // Use the API's internal fetch logic but handle individual updates
+        // We bypass the bulk getFundDetails to control granularity
+        // Re-using the logic from getFundDetails but for single item
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+        const response = await fetch(`${API_BASE}/valuation/${code}`);
+        let fundData = null;
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.fundcode) {
+            fundData = {
+              code: data.fundcode,
+              name: data.name,
+              nav: parseFloat(data.dwjz),
+              navDate: data.jzrq,
+              gsz: parseFloat(data.gsz),
+              gszzl: data.gszzl,
+              gztime: data.gztime
+            };
+          }
+        }
+        
+        // Update state for this specific fund immediately
+        if (fundData) {
+          set((state) => ({
+            fundData: { ...state.fundData, [code]: fundData },
+            fundLoading: { ...state.fundLoading, [code]: false }
+          }));
+        } else {
+           // Handle failure/empty by clearing loading
+           set((state) => ({
+            fundLoading: { ...state.fundLoading, [code]: false }
+          }));
+        }
+      } catch (error) {
+        console.warn(`Failed to fetch data for fund ${code}`, error);
+        set((state) => ({
+          fundLoading: { ...state.fundLoading, [code]: false }
+        }));
+      }
+    });
+
     try {
-      const data = await getFundDetails(Array.from(codes));
-      set((state) => ({
-        fundData: { ...state.fundData, ...data }
-      }));
+      await Promise.all(promises);
     } catch (error) {
-      console.error("Failed to fetch fund data", error);
+      console.error("Error in batch fetch", error);
+    } finally {
+      set({ isLoading: false });
     }
   }
 }));

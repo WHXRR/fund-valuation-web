@@ -14,8 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const FundDetailSkeleton = () => {
   return (
-    <div className="container mx-auto p-4 max-w-md pb-24 relative min-h-screen">
-      <div className="flex items-center mb-4">
+    <div className="space-y-6 pb-24 md:pb-0 min-h-screen">
+      <div className="flex items-center mb-4 px-8 py-4">
         <Skeleton className="h-10 w-10 rounded-full mr-2" />
         <div className="space-y-2">
           <Skeleton className="h-5 w-32" />
@@ -23,9 +23,9 @@ const FundDetailSkeleton = () => {
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-8">
         {/* Chart Card Skeleton */}
-        <div className="rounded-xl border bg-card text-card-foreground shadow">
+        <div className="lg:col-span-2 rounded-xl border bg-card text-card-foreground shadow">
           <div className="p-6 pb-2">
             <div className="flex justify-between items-center mb-4">
               <Skeleton className="h-6 w-20" />
@@ -41,7 +41,7 @@ const FundDetailSkeleton = () => {
         </div>
 
         {/* History List Skeleton */}
-        <div className="rounded-xl border bg-card text-card-foreground shadow">
+        <div className="lg:col-span-1 rounded-xl border bg-card text-card-foreground shadow">
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
               <Skeleton className="h-6 w-20" />
@@ -229,9 +229,6 @@ const FundDetail = () => {
     return chartRawData.netWorthTrend.filter(item => item.x >= startTime);
   }, [chartRawData, range]);
 
-  // Helper to handle color opacity regardless of format (oklch, rgb, hex)
-  // const getOpacityColor = (c, opacity) => { ... } // Removed unused function
-
   const getOption = () => {
     // Ensure consistent option structure even if data is empty to prevent ECharts interpolation errors
     const dates = filteredChartData.map(item => {
@@ -315,8 +312,8 @@ const FundDetail = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-md pb-24 relative min-h-screen">
-      <div className="flex items-center mb-4">
+    <div className="space-y-6 pb-24 md:pb-0 min-h-screen">
+      <div className="flex items-center mb-4 px-8 py-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="mr-2">
           <ArrowLeft className="h-6 w-6" />
         </Button>
@@ -326,87 +323,139 @@ const FundDetail = () => {
         </div>
       </div>
 
-      <Card className="mb-6">
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-base">业绩走势</CardTitle>
-            <Badge variant="secondary">单位净值</Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 w-full relative">
-            {chartLoading && (
-              <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-sm flex items-center justify-center">
-                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-8">
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-base">业绩走势</CardTitle>
+                <Badge variant="secondary">单位净值</Badge>
               </div>
-            )}
-            <ReactECharts 
-              option={getOption()} 
-              style={{ height: '100%', width: '100%' }} 
-              notMerge={true}
-              lazyUpdate={true}
-            />
-          </div>
-          <div className="flex justify-between mt-4">
-            {['1M', '3M', '6M', '1Y', 'ALL'].map((r) => (
+            </CardHeader>
+            <CardContent>
+              <div className="h-64 w-full relative">
+                {chartLoading && (
+                  <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-sm flex items-center justify-center">
+                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                )}
+                <ReactECharts 
+                  option={getOption()} 
+                  style={{ height: '100%', width: '100%' }} 
+                  notMerge={true}
+                  lazyUpdate={true}
+                />
+              </div>
+              <div className="flex justify-between mt-4">
+                {['1M', '3M', '6M', '1Y', 'ALL'].map((r) => (
+                  <Button 
+                    key={r} 
+                    variant={range === r ? "default" : "ghost"} 
+                    size="sm"
+                    onClick={() => handleRangeChange(r)}
+                    className="text-xs h-8 px-2"
+                  >
+                    {r === 'ALL' ? '全部' : `近${r}`}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center justify-end gap-3 p-4 bg-card rounded-xl border shadow-sm">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsHistoryOpen(true)}
+              title="交易记录"
+            >
+               <History className="h-5 w-5" />
+            </Button>
+            
+            {!holding ? (
               <Button 
-                key={r} 
-                variant={range === r ? "default" : "ghost"} 
-                size="sm"
-                onClick={() => handleRangeChange(r)}
-                className="text-xs h-8 px-2"
+                className="w-32"
+                onClick={() => {
+                  setModalType('buy');
+                  setIsModalOpen(true);
+                }}
               >
-                {r === 'ALL' ? '全部' : `近${r}`}
+                去买入
               </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-base">历史净值</CardTitle>
-            <Button variant="link" className="text-xs h-auto p-0" onClick={() => {}}>更多 &gt;</Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-0">
-            <div className="grid grid-cols-4 gap-2 text-xs text-gray-500 mb-2 px-2">
-              <div>日期</div>
-              <div className="text-right">单位净值</div>
-              <div className="text-right">累计净值</div>
-              <div className="text-right">日涨幅</div>
-            </div>
-            {historyData.list.map((item, index) => (
-              <div key={index} className="grid grid-cols-4 gap-2 text-sm py-3 border-b last:border-0 px-2">
-                <div className="font-medium text-gray-700">{item.FSRQ.substring(5)}</div>
-                <div className="text-right">{item.DWJZ}</div>
-                <div className="text-right text-gray-500">{item.LJJZ}</div>
-                <div className={`text-right ${parseFloat(item.JZZZL) >= 0 ? 'text-red-500' : 'text-green-500'}`}>
-                  {parseFloat(item.JZZZL) > 0 ? '+' : ''}{item.JZZZL}%
-                </div>
-              </div>
-            ))}
-            {historyData.list.length < historyData.total && (
-              <div className="text-center pt-4">
+            ) : (
+              <>
                 <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={loadMoreHistory} 
-                  disabled={loadingHistory}
+                  variant="outline"
+                  className="w-32"
+                  onClick={() => {
+                    setModalType('sell');
+                    setIsModalOpen(true);
+                  }}
                 >
-                  {loadingHistory ? '加载中...' : '加载更多'}
+                  卖出
                 </Button>
-              </div>
+                <Button 
+                  className="w-32"
+                  onClick={() => {
+                    setModalType('buy');
+                    setIsModalOpen(true);
+                  }}
+                >
+                  加仓
+                </Button>
+              </>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Bottom Floating Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-200 z-50">
-        <div className="max-w-md mx-auto flex gap-3">
+        <div className="lg:col-span-1">
+          <Card className="h-full">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-base">历史净值</CardTitle>
+                <Button variant="link" className="text-xs h-auto p-0" onClick={() => {}}>更多 &gt;</Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-0">
+                <div className="grid grid-cols-4 gap-2 text-xs text-gray-500 mb-2 px-2">
+                  <div>日期</div>
+                  <div className="text-right">单位净值</div>
+                  <div className="text-right">累计净值</div>
+                  <div className="text-right">日涨幅</div>
+                </div>
+                {historyData.list.map((item, index) => (
+                  <div key={index} className="grid grid-cols-4 gap-2 text-sm py-3 border-b last:border-0 px-2">
+                    <div className="font-medium text-gray-700">{item.FSRQ.substring(5)}</div>
+                    <div className="text-right">{item.DWJZ}</div>
+                    <div className="text-right text-gray-500">{item.LJJZ}</div>
+                    <div className={`text-right ${parseFloat(item.JZZZL) >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+                      {parseFloat(item.JZZZL) > 0 ? '+' : ''}{item.JZZZL}%
+                    </div>
+                  </div>
+                ))}
+                {historyData.list.length < historyData.total && (
+                  <div className="text-center pt-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={loadMoreHistory} 
+                      disabled={loadingHistory}
+                    >
+                      {loadingHistory ? '加载中...' : '加载更多'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Mobile Bottom Floating Action Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-200 z-50">
+        <div className="flex gap-3">
           <Button
             variant="outline"
             size="icon"
