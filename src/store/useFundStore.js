@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getFundDetails, getTransactions, addTransaction as apiAddTransaction, deleteTransaction as apiDeleteTransaction, deleteFundTransactions as apiDeleteFundTransactions, getWatchlist, addToWatchlist as apiAddToWatchlist, removeFromWatchlist as apiRemoveFromWatchlist } from '../services/api';
+import { getFundDetails, getTransactions, addTransaction as apiAddTransaction, deleteTransaction as apiDeleteTransaction, deleteFundTransactions as apiDeleteFundTransactions, getWatchlist, addToWatchlist as apiAddToWatchlist, removeFromWatchlist as apiRemoveFromWatchlist, getMarketIndices } from '../services/api';
 
 const calculatePortfolio = (transactions) => {
   const now = new Date();
@@ -59,8 +59,24 @@ const useFundStore = create((set, get) => ({
   transactions: [],
   watchlist: [],
   fundData: {},
+  marketIndices: [], // Add marketIndices state
   fundLoading: {}, // Individual loading state per fund code
   isLoading: false,
+  isIndicesLoading: false, // Add loading state for indices
+
+  fetchMarketIndices: async () => {
+    try {
+      set({ isIndicesLoading: true });
+      const indices = await getMarketIndices();
+      set({ 
+        marketIndices: indices,
+        isIndicesLoading: false
+      });
+    } catch (error) {
+      console.error('Failed to fetch market indices:', error);
+      set({ isIndicesLoading: false });
+    }
+  },
 
   refreshPortfolio: async () => {
     try {
@@ -160,7 +176,7 @@ const useFundStore = create((set, get) => ({
     time: new Date().toISOString()
   }),
 
-  updatePortfolioItem: (fund) => {
+  updatePortfolioItem: () => {
     console.warn("Direct update not supported in backend mode. Please use transactions.");
   },
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, RefreshCw, ArrowUpRight, ArrowDownRight, Pencil, ArrowUpDown, Loader2, CheckCircle2 } from 'lucide-react';
 import useFundStore from '../store/useFundStore';
 import AddFundModal from '../components/AddFundModal';
+import MarketIndices from '../components/MarketIndices';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +18,7 @@ import clsx from 'clsx';
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Home() {
-  const { portfolio, fundData, fetchFundData, isLoading, fundLoading, addToPortfolio, updatePortfolioItem, deleteFundTransactions } = useFundStore();
+  const { portfolio, fundData, fetchFundData, fetchMarketIndices, isLoading, fundLoading, addToPortfolio, updatePortfolioItem, deleteFundTransactions } = useFundStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
   const [sortBy, setSortBy] = useState('default'); // 'default', 'change', 'profit'
@@ -140,6 +141,11 @@ export default function Home() {
     return navDate === gzDate;
   };
 
+  const handleRefresh = () => {
+    fetchFundData('portfolio');
+    fetchMarketIndices();
+  };
+
   return (
     <div className="space-y-6 pb-20 md:pb-0">
       <header className="flex justify-between items-center">
@@ -147,12 +153,14 @@ export default function Home() {
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={() => fetchFundData('portfolio')} 
+          onClick={handleRefresh} 
           disabled={isLoading}
         >
           <RefreshCw className={clsx("h-5 w-5", isLoading && "animate-spin")} />
         </Button>
       </header>
+
+      <MarketIndices />
 
       {/* Summary Card */}
       <div className="grid gap-4 md:grid-cols-1">

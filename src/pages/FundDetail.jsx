@@ -247,7 +247,20 @@ const FundDetail = () => {
         formatter: function (params) {
           if (!params || !params.length) return '';
           const param = params[0];
-          return `${param.name}<br/>单位净值: ${param.value}`;
+          
+          let rate = 0;
+          if (filteredChartData.length > 0) {
+            const startValue = parseFloat(filteredChartData[0].y);
+            const currentValue = parseFloat(param.value);
+            if (startValue !== 0 && !isNaN(startValue) && !isNaN(currentValue)) {
+              rate = ((currentValue - startValue) / startValue) * 100;
+            }
+          }
+          
+          const color = rate >= 0 ? '#ef4444' : '#22c55e';
+          const sign = rate > 0 ? '+' : '';
+          
+          return `${param.name}<br/>累计收益率: <span style="color:${color};font-weight:bold">${sign}${rate.toFixed(2)}%</span>`;
         }
       },
       grid: {

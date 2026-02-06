@@ -146,6 +146,19 @@ export const getFundHistory = async (code, page = 1, pageSize = 20) => {
   }
 };
 
+export const getMarketIndices = async () => {
+  try {
+    const headers = await getHeaders();
+    const response = await fetch(`${API_BASE}/indices`, { headers });
+    if (!response.ok) throw new Error('Failed to fetch market indices');
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching market indices:', error);
+    return [];
+  }
+};
+
 // --- User Data APIs (Protected) ---
 
 export const getTransactions = async () => {
