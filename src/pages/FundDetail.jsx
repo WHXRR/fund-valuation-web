@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const FundDetailSkeleton = () => {
   return (
     <div className="space-y-6 pb-24 md:pb-0 min-h-screen">
-      <div className="flex items-center mb-4 px-8 py-4">
+      <div className="flex items-center mb-4 px-4 md:px-8 py-4">
         <Skeleton className="h-10 w-10 rounded-full mr-2" />
         <div className="space-y-2">
           <Skeleton className="h-5 w-32" />
@@ -23,7 +23,7 @@ const FundDetailSkeleton = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-4 md:px-8">
         {/* Chart Card Skeleton */}
         <div className="lg:col-span-2 rounded-xl border bg-card text-card-foreground shadow">
           <div className="p-6 pb-2">
@@ -326,7 +326,7 @@ const FundDetail = () => {
 
   return (
     <div className="space-y-6 pb-24 md:pb-0 min-h-screen">
-      <div className="flex items-center mb-4 px-8 py-4">
+      <div className="flex items-center mb-4 px-4 md:px-8 py-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="mr-2">
           <ArrowLeft className="h-6 w-6" />
         </Button>
@@ -336,7 +336,7 @@ const FundDetail = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-4 md:px-8">
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader className="pb-2">

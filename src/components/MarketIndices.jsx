@@ -40,7 +40,7 @@ const MarketIndices = () => {
   // Current order from backend is: 上证, 深证, 创业板, 恒生, 道琼斯, 纳指, 标普
   
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6 overflow-x-auto pb-2 md:pb-0">
+    <div className="flex gap-3 mb-6 overflow-x-auto pb-2 md:pb-0">
       {displayIndices.map((index) => (
         <Card key={index.code} className="min-w-[120px] shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-3 flex flex-col items-center justify-center text-center">

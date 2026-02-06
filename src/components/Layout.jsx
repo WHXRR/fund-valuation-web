@@ -22,7 +22,7 @@ export default function Layout() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex lg:h-screen bg-gray-50 dark:bg-gray-900">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-white dark:bg-gray-800 fixed inset-y-0 left-0 z-50">
         <div className="flex h-14 items-center border-b px-6">
@@ -66,7 +66,7 @@ export default function Layout() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:pl-64 transition-all duration-300">
+      <div className="flex-1 flex flex-col md:pl-64 transition-all duration-300 overflow-hidden">
         {/* Mobile Header */}
         <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-white/80 px-4 backdrop-blur-md md:hidden">
           <div className="font-bold text-lg text-primary">牛进行时</div>
@@ -75,7 +75,7 @@ export default function Layout() {
                <DropdownMenu>
                  <DropdownMenuTrigger asChild>
                    <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full">
-                     <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
+                     <div className="flex h-full w-full items-center justify-center rounded-full">
                        <User className="h-4 w-4" />
                      </div>
                    </Button>
@@ -105,7 +105,7 @@ export default function Layout() {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 w-full max-w-7xl mx-auto">
+        <main className="flex-1 p-4 md:p-8 w-full max-w-7xl mx-auto overflow-hidden">
           <Outlet />
         </main>
       </div>
