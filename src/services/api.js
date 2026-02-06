@@ -1,35 +1,36 @@
+import { supabase } from '../lib/supabase';
 
-// 缓存所有基金列表
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
+const getHeaders = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+  return headers;
+};
+
+// --- Fund Data APIs (Public) ---
+
 let allFundsCache = null;
 let isFetchingFunds = false;
 let fetchPromise = null;
 
-// 获取所有基金列表
-const getAllFunds = async () => {
+export const getAllFunds = async () => {
   if (allFundsCache) return allFundsCache;
   if (isFetchingFunds) return fetchPromise;
 
   isFetchingFunds = true;
   fetchPromise = (async () => {
     try {
-      const response = await fetch('/api/all-funds');
+      const response = await fetch(`${API_BASE}/all-funds`);
       if (!response.ok) throw new Error('Failed to fetch fund list');
-      const text = await response.text();
-      
-      // 格式: var r = [["code","abbr","name","type","pinyin"],...];
-      const jsonStr = text.replace(/^var r = /, '').replace(/;$/, '');
-      const data = JSON.parse(jsonStr);
-      
-      // 转换为更友好的格式
-      allFundsCache = data.map(item => ({
-        code: item[0],
-        abbr: item[1],
-        name: item[2],
-        type: item[3],
-        pinyin: item[4]
-      }));
-      
-      return allFundsCache;
+      const data = await response.json();
+      allFundsCache = data; // Backend returns clean format
+      return data;
     } catch (error) {
       console.error('Error loading funds:', error);
       return [];
@@ -41,7 +42,6 @@ const getAllFunds = async () => {
   return fetchPromise;
 };
 
-// 搜索基金
 export const searchFund = async (keyword) => {
   if (!keyword) return [];
   const funds = await getAllFunds();
@@ -54,40 +54,31 @@ export const searchFund = async (keyword) => {
   ).slice(0, 20);
 };
 
-// 获取基金估值信息 (通过 Vite 代理)
-// 真实接口: http://fundgz.1234567.com.cn/js/{code}.js
 export const getFundDetails = async (codes) => {
   if (!codes || codes.length === 0) return {};
 
   const promises = codes.map(async (code) => {
     try {
-      // 添加时间戳防止缓存
-      const response = await fetch(`/api/valuation/${code}.js?rt=${Date.now()}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const text = await response.text();
+      const response = await fetch(`${API_BASE}/valuation/${code}`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
       
-      // 返回格式通常为: jsonpgz({"fundcode":"110011","name":"易方达优质精选混合(QDII)","jzrq":"2024-05-29","dwjz":"5.7663","gsz":"5.7288","gszzl":"-0.65","gztime":"2024-05-30 15:00"});
-      // 或者 jsonpgz(); (无数据)
-      const match = text.match(/jsonpgz\((.*)\)/);
-      
-      if (match && match[1]) {
-        const data = JSON.parse(match[1]);
+      // Backend returns parsed JSON from jsonpgz({...})
+      // Data format from backend: { fundcode: "...", dwjz: "...", ... }
+      if (data && data.fundcode) {
         return {
           code: data.fundcode,
           name: data.name,
-          nav: parseFloat(data.dwjz), // 单位净值 (昨日)
-          navDate: data.jzrq, // 净值日期
-          gsz: parseFloat(data.gsz), // 估算净值 (实时)
-          gszzl: data.gszzl, // 估算涨跌幅
-          gztime: data.gztime // 估值时间
+          nav: parseFloat(data.dwjz),
+          navDate: data.jzrq,
+          gsz: parseFloat(data.gsz),
+          gszzl: data.gszzl,
+          gztime: data.gztime
         };
       }
       return null;
     } catch (error) {
-      // 如果获取实时数据失败，尝试从缓存列表中获取基础信息作为降级
-      // 注意：这里没有实时数据，只能显示名称
+      // Fallback to cache if available
       if (allFundsCache) {
         const fund = allFundsCache.find(f => f.code === code);
         if (fund) {
@@ -118,42 +109,33 @@ export const getFundDetails = async (codes) => {
   return dataMap;
 };
 
-// 获取基金所有历史数据（包含净值走势等）
-// 真实接口: http://fund.eastmoney.com/pingzhongdata/{code}.js
 export const getFundChartData = async (code) => {
   try {
-    const response = await fetch(`/api/pingzhongdata/${code}.js?rt=${Date.now()}`);
+    const response = await fetch(`${API_BASE}/pingzhongdata/${code}`);
     if (!response.ok) throw new Error('Failed to fetch chart data');
-    const text = await response.text();
-
-    // 使用 new Function 执行脚本并提取变量，比正则更稳健，能处理嵌套数组
-    const func = new Function(`${text}
-      return { 
-        name: (typeof fS_name !== 'undefined' ? fS_name : '${code}'), 
-        netWorthTrend: (typeof Data_netWorthTrend !== 'undefined' ? Data_netWorthTrend : []), 
-        acWorthTrend: (typeof Data_ACWorthTrend !== 'undefined' ? Data_ACWorthTrend : []) 
-      };
-    `);
+    const data = await response.json();
     
-    return func();
+    // Backend returns { Data_netWorthTrend: [], ... }
+    return { 
+      name: data.fS_name || code, 
+      netWorthTrend: data.Data_netWorthTrend || [], 
+      acWorthTrend: data.Data_ACWorthTrend || [] 
+    };
   } catch (error) {
     console.error('Error fetching fund chart data:', error);
     return null;
   }
 };
 
-// 获取基金历史净值列表 (分页)
-// 真实接口: http://api.fund.eastmoney.com/f10/lsjz?fundCode={code}&pageIndex={page}&pageSize={size}
 export const getFundHistory = async (code, page = 1, pageSize = 20) => {
   try {
-    const response = await fetch(`/api/f10/lsjz?fundCode=${code}&pageIndex=${page}&pageSize=${pageSize}`);
+    const response = await fetch(`${API_BASE}/f10/lsjz/${code}?pageIndex=${page}&pageSize=${pageSize}`);
     if (!response.ok) throw new Error('Failed to fetch history');
     const data = await response.json();
     
-    // 返回结构: { Data: { LSJZList: [] }, TotalCount: 1000, ... }
     if (data.Data && data.Data.LSJZList) {
       return {
-        list: data.Data.LSJZList, // { FSRQ: "2024-05-30", DWJZ: "1.0", LJJZ: "1.5", JZZZL: "0.5" }
+        list: data.Data.LSJZList,
         total: data.TotalCount
       };
     }
@@ -162,4 +144,72 @@ export const getFundHistory = async (code, page = 1, pageSize = 20) => {
     console.error('Error fetching fund history:', error);
     return { list: [], total: 0 };
   }
+};
+
+// --- User Data APIs (Protected) ---
+
+export const getTransactions = async () => {
+  const headers = await getHeaders();
+  const response = await fetch(`${API_BASE}/transactions`, { headers });
+  if (!response.ok) throw new Error('Failed to fetch transactions');
+  return response.json();
+};
+
+export const addTransaction = async (transaction) => {
+  const headers = await getHeaders();
+  const response = await fetch(`${API_BASE}/transactions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(transaction)
+  });
+  if (!response.ok) throw new Error('Failed to add transaction');
+  return response.json();
+};
+
+export const deleteTransaction = async (id) => {
+  const headers = await getHeaders();
+  const response = await fetch(`${API_BASE}/transactions/${id}`, {
+    method: 'DELETE',
+    headers
+  });
+  if (!response.ok) throw new Error('Failed to delete transaction');
+  return response.json();
+};
+
+export const deleteFundTransactions = async (code) => {
+  const headers = await getHeaders();
+  const response = await fetch(`${API_BASE}/funds/${code}/transactions`, {
+    method: 'DELETE',
+    headers
+  });
+  if (!response.ok) throw new Error('Failed to delete fund transactions');
+  return response.json();
+};
+
+export const getWatchlist = async () => {
+  const headers = await getHeaders();
+  const response = await fetch(`${API_BASE}/watchlist`, { headers });
+  if (!response.ok) throw new Error('Failed to fetch watchlist');
+  return response.json();
+};
+
+export const addToWatchlist = async (fund) => {
+  const headers = await getHeaders();
+  const response = await fetch(`${API_BASE}/watchlist`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(fund)
+  });
+  if (!response.ok) throw new Error('Failed to add to watchlist');
+  return response.json();
+};
+
+export const removeFromWatchlist = async (code) => {
+  const headers = await getHeaders();
+  const response = await fetch(`${API_BASE}/watchlist/${code}`, {
+    method: 'DELETE',
+    headers
+  });
+  if (!response.ok) throw new Error('Failed to remove from watchlist');
+  return response.json();
 };

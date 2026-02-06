@@ -1,190 +1,194 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { getFundDetails } from '../services/api';
+import { getFundDetails, getTransactions, addTransaction as apiAddTransaction, deleteTransaction as apiDeleteTransaction, deleteFundTransactions as apiDeleteFundTransactions, getWatchlist, addToWatchlist as apiAddToWatchlist, removeFromWatchlist as apiRemoveFromWatchlist } from '../services/api';
 
 const calculatePortfolio = (transactions) => {
   const now = new Date();
-  const portfolioMap = {}; // code -> { ... }
+  const portfolioMap = {}; 
   
-  // Sort transactions by time to ensure correct order of operations (especially for sell ratios)
+  // Sort transactions by time
   const sortedTransactions = [...transactions].sort((a, b) => new Date(a.time) - new Date(b.time));
 
   sortedTransactions.forEach(tx => {
-    // Use confirmationTime if available, otherwise time for portfolio calculation
+    // Effective time check
     const effectiveTime = tx.confirmationTime ? new Date(tx.confirmationTime) : new Date(tx.time);
-    
-    // Only process effective transactions
     if (effectiveTime > now) return; 
     
-    if (!portfolioMap[tx.fundCode]) {
-      portfolioMap[tx.fundCode] = {
-        id: tx.fundCode, // Use code as ID for simplicity in map
-        code: tx.fundCode,
-        name: tx.name,
+    // Use fund_code/fund_name from backend format
+    const code = tx.fund_code || tx.fundCode;
+    const name = tx.fund_name || tx.name;
+    
+    if (!portfolioMap[code]) {
+      portfolioMap[code] = {
+        id: code, 
+        code: code,
+        name: name,
         amount: 0,
         shares: 0,
         cost: 0
       };
     }
     
-    const p = portfolioMap[tx.fundCode];
+    const p = portfolioMap[code];
+    const amount = Number(tx.amount || 0);
+    const cost = Number(tx.cost || 0);
+    const shares = Number(tx.shares || 0);
     
     if (tx.type === 'buy') {
-      p.amount += Number(tx.amount);
-      p.cost += Number(tx.cost);
-      if (tx.shares) {
-        p.shares += Number(tx.shares);
-      }
-      if (tx.name) p.name = tx.name;
+      p.amount += amount;
+      p.cost += cost;
+      p.shares += shares;
+      if (name) p.name = name;
     } else if (tx.type === 'sell') {
-       if (tx.shares) {
-         p.shares -= Number(tx.shares);
+       if (shares > 0) {
+         p.shares -= shares;
        }
-       
-       if (tx.shareRatio) {
-         p.amount -= Number(tx.redeemAmount);
-         p.cost -= p.cost * Number(tx.shareRatio);
-       } else {
-         // Fallback
-         p.amount -= Number(tx.amount || 0);
-       }
+       p.amount -= amount;
+       p.cost -= cost;
     }
     
-    // Ensure numbers are clean
     p.amount = Math.max(0, p.amount);
     p.shares = Math.max(0, p.shares);
     p.cost = Math.max(0, p.cost);
   });
   
-  // Filter out empty holdings (amount close to 0)
   return Object.values(portfolioMap).filter(p => p.amount > 0.01);
 };
 
-const useFundStore = create(
-  persist(
-    (set, get) => ({
-      portfolio: [], // { id, code, cost, amount }
-      transactions: [], // { id, type, fundCode, amount, cost, time, createTime, ... }
-      watchlist: [], // { id, code, name }
-      fundData: {}, // { code: { ...data } }
-      isLoading: false,
+const useFundStore = create((set, get) => ({
+  portfolio: [],
+  transactions: [],
+  watchlist: [],
+  fundData: {},
+  isLoading: false,
 
-      // Deprecated: addToPortfolio (use addTransaction)
-      addToPortfolio: (fund) => get().addTransaction({
-        type: 'buy',
-        fundCode: fund.code,
-        name: fund.name,
-        amount: fund.amount,
-        cost: fund.cost,
-        time: new Date().toISOString()
-      }),
-
-      // Deprecated: updatePortfolioItem
-      updatePortfolioItem: (fund) => set((state) => ({
-        portfolio: state.portfolio.map((f) => f.id === fund.id ? fund : f)
-      })),
-
-      // Deprecated: removeFromPortfolio (use deleteTransaction or sell all)
-      removeFromPortfolio: (id) => set((state) => ({
-        portfolio: state.portfolio.filter((f) => f.id !== id)
-      })),
-
-      addTransaction: (transaction) => set((state) => {
-        const newTx = {
-          ...transaction,
-          id: Date.now().toString(),
-          createTime: new Date().toISOString(),
-          // Ensure time is ISO string
-          time: transaction.time instanceof Date ? transaction.time.toISOString() : transaction.time,
-          confirmationTime: transaction.confirmationTime instanceof Date ? transaction.confirmationTime.toISOString() : transaction.confirmationTime
-        };
-        
-        // Handle syncWatchlist
-        if (transaction.syncWatchlist) {
-           get().addToWatchlist({ code: transaction.fundCode, name: transaction.name });
-        }
-
-        const newTransactions = [...(state.transactions || []), newTx];
-        return {
-          transactions: newTransactions,
-          portfolio: calculatePortfolio(newTransactions)
-        };
-      }),
-
-      deleteTransaction: (id) => set((state) => {
-        const newTransactions = state.transactions.filter(t => t.id !== id);
-        return {
-          transactions: newTransactions,
-          portfolio: calculatePortfolio(newTransactions)
-        };
-      }),
+  refreshPortfolio: async () => {
+    try {
+      set({ isLoading: true });
+      const [txs, wl] = await Promise.all([
+        getTransactions(),
+        getWatchlist()
+      ]);
       
-      refreshPortfolio: () => set((state) => ({
-        portfolio: calculatePortfolio(state.transactions || [])
-      })),
-
-      addToWatchlist: (fund) => set((state) => {
-        if (state.watchlist.some(f => f.code === fund.code)) return state;
-        return { watchlist: [...state.watchlist, { ...fund, id: Date.now().toString() }] };
-      }),
-
-      removeFromWatchlist: (code) => set((state) => ({
-        watchlist: state.watchlist.filter((f) => f.code !== code)
-      })),
-
-      fetchFundData: async () => {
-        const state = get();
-        const codes = new Set([
-          ...state.portfolio.map(f => f.code),
-          ...state.watchlist.map(f => f.code)
-        ]);
-        
-        if (codes.size === 0) return;
-
-        set({ isLoading: true });
-        try {
-          const data = await getFundDetails(Array.from(codes));
-          set((state) => ({
-            fundData: { ...state.fundData, ...data },
-            isLoading: false
-          }));
-        } catch (error) {
-          console.error("Failed to fetch fund data", error);
-          set({ isLoading: false });
-        }
-      }
-    }),
-    {
-      name: 'fund-storage',
-      partialize: (state) => ({ 
-        portfolio: state.portfolio, 
-        watchlist: state.watchlist,
-        transactions: state.transactions 
-      }),
-      version: 1,
-      migrate: (persistedState, version) => {
-        if (version === 0 || !version) {
-          const transactions = [];
-          if (persistedState.portfolio) {
-            persistedState.portfolio.forEach(p => {
-              transactions.push({
-                id: Date.now().toString() + Math.random(),
-                type: 'buy',
-                fundCode: p.code,
-                name: p.name,
-                amount: p.amount,
-                cost: p.cost,
-                time: new Date().toISOString(),
-                createTime: new Date().toISOString()
-              });
-            });
-          }
-          return { ...persistedState, transactions, version: 1 };
-        }
-        return persistedState;
-      },
+      const portfolio = calculatePortfolio(txs);
+      
+      set({ 
+        transactions: txs,
+        watchlist: wl,
+        portfolio,
+        isLoading: false
+      });
+      
+      get().fetchFundData();
+    } catch (error) {
+      console.error('Failed to refresh portfolio:', error);
+      set({ isLoading: false });
     }
-  )
-);
+  },
+
+  addTransaction: async (transaction) => {
+    try {
+      // Adapt frontend model to backend model
+      const newTx = {
+         fundCode: transaction.fundCode,
+         name: transaction.name,
+         type: transaction.type,
+         amount: transaction.amount,
+         shares: transaction.shares,
+         cost: transaction.cost,
+         time: transaction.time instanceof Date ? transaction.time.toISOString() : transaction.time,
+         confirmationTime: transaction.confirmationTime instanceof Date ? transaction.confirmationTime.toISOString() : transaction.confirmationTime
+      };
+
+      await apiAddTransaction(newTx);
+      
+      if (transaction.syncWatchlist) {
+        await get().addToWatchlist({ code: transaction.fundCode, name: transaction.name });
+      }
+
+      get().refreshPortfolio();
+    } catch (error) {
+      console.error('Failed to add transaction:', error);
+    }
+  },
+
+  deleteTransaction: async (id) => {
+    try {
+      await apiDeleteTransaction(id);
+      get().refreshPortfolio();
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+    }
+  },
+
+  deleteFundTransactions: async (code) => {
+    try {
+      await apiDeleteFundTransactions(code);
+      get().refreshPortfolio();
+    } catch (error) {
+      console.error('Failed to delete fund transactions:', error);
+    }
+  },
+
+  addToWatchlist: async (fund) => {
+    try {
+      // Check locally first to avoid dup calls
+      const { watchlist } = get();
+      if (watchlist.some(w => w.code === fund.code)) return;
+      
+      await apiAddToWatchlist(fund);
+      get().refreshPortfolio();
+    } catch (error) {
+      console.error('Failed to add to watchlist:', error);
+    }
+  },
+
+  removeFromWatchlist: async (code) => {
+    try {
+      await apiRemoveFromWatchlist(code);
+      get().refreshPortfolio();
+    } catch (error) {
+      console.error('Failed to remove from watchlist:', error);
+    }
+  },
+
+  // Compatibility methods
+  addToPortfolio: (fund) => get().addTransaction({
+    type: 'buy',
+    fundCode: fund.code,
+    name: fund.name,
+    amount: fund.amount,
+    cost: fund.cost,
+    time: new Date().toISOString()
+  }),
+
+  updatePortfolioItem: (fund) => {
+    console.warn("Direct update not supported in backend mode. Please use transactions.");
+  },
+
+  removeFromPortfolio: (id) => {
+    // In Home.jsx, item.id is set to item.code for portfolio items
+    // So we can use id as code here
+    get().deleteFundTransactions(id);
+  },
+
+  fetchFundData: async () => {
+    const state = get();
+    const codes = new Set([
+      ...state.portfolio.map(f => f.code),
+      ...state.watchlist.map(f => f.code)
+    ]);
+    
+    if (codes.size === 0) return;
+
+    try {
+      const data = await getFundDetails(Array.from(codes));
+      set((state) => ({
+        fundData: { ...state.fundData, ...data }
+      }));
+    } catch (error) {
+      console.error("Failed to fetch fund data", error);
+    }
+  }
+}));
 
 export default useFundStore;

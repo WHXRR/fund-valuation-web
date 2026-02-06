@@ -15,13 +15,19 @@ import {
 import clsx from 'clsx';
 
 export default function Home() {
-  const { portfolio, fundData, fetchFundData, isLoading, addToPortfolio, removeFromPortfolio, updatePortfolioItem } = useFundStore();
+  const { portfolio, fundData, fetchFundData, isLoading, addToPortfolio, updatePortfolioItem, deleteFundTransactions } = useFundStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFund, setEditingFund] = useState(null);
   const [sortBy, setSortBy] = useState('default'); // 'default', 'change', 'profit'
   const [sortOrder, setSortOrder] = useState('desc'); // 'asc', 'desc'
 
   const navigate = useNavigate();
+
+  const handleDelete = (item) => {
+    if (confirm('确定要删除该基金的所有持仓记录吗？此操作不可恢复。')) {
+      deleteFundTransactions(item.code);
+    }
+  };
 
   useEffect(() => {
     fetchFundData();
@@ -295,7 +301,7 @@ export default function Home() {
                           className="h-6 text-xs text-muted-foreground hover:text-destructive px-2"
                           onClick={(e) => {
                             e.stopPropagation();
-                            removeFromPortfolio(item.id);
+                            handleDelete(item);
                           }}
                        >
                          删除
