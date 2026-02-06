@@ -20,7 +20,7 @@ export default function Layout() {
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Top Bar for User Info */}
       <header className="bg-white border-b px-4 py-2 flex justify-between items-center sticky top-0 z-40">
-        <div className="font-bold text-lg text-primary">FundVal</div>
+        <div className="font-bold text-lg text-primary">牛进行时</div>
         <div className="flex items-center gap-2">
            {user ? (
              <DropdownMenu>
