@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Plus, RefreshCw } from "lucide-react";
 import useFundStore from "../store/useFundStore";
 import AddFundModal from "../components/AddFundModal";
-import MarketIndices from "../components/MarketIndices";
 import PortfolioTable, {
   PortfolioTableSkeleton,
 } from "../components/PortfolioTable";
@@ -15,7 +14,6 @@ export default function Home() {
     portfolio,
     fundData,
     fetchFundData,
-    fetchMarketIndices,
     isLoading,
     fundLoading,
     addToPortfolio,
@@ -121,7 +119,6 @@ export default function Home() {
 
   const handleRefresh = () => {
     fetchFundData("portfolio");
-    fetchMarketIndices();
   };
 
   return (
@@ -137,8 +134,6 @@ export default function Home() {
           <RefreshCw className={clsx("h-5 w-5", isLoading && "animate-spin")} />
         </Button>
       </header>
-
-      <MarketIndices />
 
       {/* Summary Card */}
       <div className="grid gap-4 md:grid-cols-1">

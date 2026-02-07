@@ -44,14 +44,32 @@ export const getAllFunds = async () => {
 
 export const searchFund = async (keyword) => {
   if (!keyword) return [];
-  const funds = await getAllFunds();
-  const lowerKeyword = keyword.toLowerCase();
-  return funds.filter(fund => 
-    fund.code.includes(lowerKeyword) || 
-    fund.name.includes(lowerKeyword) || 
-    fund.abbr.toLowerCase().includes(lowerKeyword) ||
-    fund.pinyin.toLowerCase().includes(lowerKeyword)
-  ).slice(0, 20);
+  try {
+    const response = await fetch(`${API_BASE}/search?keyword=${encodeURIComponent(keyword)}`);
+    if (!response.ok) throw new Error('Backend search failed');
+    return await response.json();
+  } catch (error) {
+    // Fallback to local filtering
+    const funds = await getAllFunds();
+    const lowerKeyword = keyword.toLowerCase();
+    return funds.filter(fund => 
+      fund.code.includes(lowerKeyword) || 
+      fund.name.toLowerCase().includes(lowerKeyword) || 
+      fund.abbr.toLowerCase().includes(lowerKeyword) ||
+      fund.pinyin.toLowerCase().includes(lowerKeyword)
+    ).slice(0, 20);
+  }
+};
+
+export const getFundRankings = async (sort = 'zzf', order = 'desc', pageIndex = 1, pageSize = 10) => {
+  try {
+    const response = await fetch(`${API_BASE}/rankings?sort=${sort}&order=${order}&pageIndex=${pageIndex}&pageSize=${pageSize}`);
+    if (!response.ok) throw new Error('Failed to fetch rankings');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching rankings:', error);
+    return [];
+  }
 };
 
 export const getFundDetails = async (codes) => {

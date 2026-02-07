@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Watchlist from './pages/Watchlist';
+import Market from './pages/Market';
 import FundDetail from './pages/FundDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -54,6 +55,7 @@ function AppRoutes() {
       }>
         <Route index element={<Home />} />
         <Route path="watchlist" element={<Watchlist />} />
+        <Route path="market" element={<Market />} />
       </Route>
       
       <Route path="/fund/:code" element={
